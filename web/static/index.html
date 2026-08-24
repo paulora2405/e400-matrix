@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>e400plus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Sora:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg0: #0e1412;
+      --bg1: #16201c;
+      --ink: #e7f2ec;
+      --muted: #8aa396;
+      --accent: #3dd68c;
+      --warn: #f0b429;
+      --line: rgba(231, 242, 236, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Sora", system-ui, sans-serif;
+      background:
+        radial-gradient(900px 500px at 10% -10%, rgba(61, 214, 140, 0.18), transparent 55%),
+        radial-gradient(700px 420px at 100% 0%, rgba(240, 180, 41, 0.08), transparent 50%),
+        linear-gradient(160deg, var(--bg0), var(--bg1));
+    }
+    main {
+      width: min(920px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 2.5rem 0 3rem;
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3rem);
+      letter-spacing: -0.04em;
+    }
+    header p {
+      margin: 0.55rem 0 0;
+      color: var(--muted);
+      max-width: 42rem;
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      gap: 1rem;
+      margin-top: 2rem;
+      grid-template-columns: 1.2fr 1fr;
+    }
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    section {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 1.1rem 1.2rem 1.25rem;
+      background: rgba(10, 16, 14, 0.45);
+      backdrop-filter: blur(8px);
+    }
+    section h2 {
+      margin: 0 0 0.85rem;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .matrix {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      display: grid;
+      place-items: center;
+      min-height: 180px;
+      border-radius: 14px;
+      background:
+        repeating-linear-gradient(0deg, rgba(61,214,140,0.05) 0 1px, transparent 1px 8px),
+        repeating-linear-gradient(90deg, rgba(61,214,140,0.05) 0 1px, transparent 1px 8px),
+        #07110d;
+      border: 1px solid rgba(61, 214, 140, 0.25);
+    }
+    .matrix .temp {
+      font-size: clamp(3rem, 10vw, 4.5rem);
+      font-weight: 600;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .matrix .meta {
+      margin-top: 0.6rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      margin-top: 0.9rem;
+    }
+    button, .toggle {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: rgba(231, 242, 236, 0.04);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 0.65rem 1rem;
+      font: inherit;
+      font-size: 0.92rem;
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #062214;
+      border-color: transparent;
+      font-weight: 700;
+    }
+    button:hover, .toggle:hover { filter: brightness(1.08); }
+    label.toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      user-select: none;
+    }
+    label.toggle input { accent-color: var(--accent); }
+    .kv {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: grid;
+      gap: 0.35rem;
+    }
+    .kv b { color: var(--ink); font-weight: 600; }
+    .ok { color: var(--accent); }
+    .bad { color: var(--warn); }
+    #log {
+      margin-top: 1rem;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: pre-wrap;
+      min-height: 3rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>e400plus</h1>
+      <p>Linux control for the darkFlash EXPLORE E400 / E400 Plus matrix display. Push live CPU stats over HID — no Windows app required.</p>
+    </header>
+
+    <div class="grid">
+      <section>
+        <h2>Display preview</h2>
+        <div class="matrix">
+          <div>
+            <div class="temp" id="temp">--°</div>
+            <div class="meta" id="meta">waiting for first push</div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="primary" id="btnPush">Push once</button>
+          <button id="btnDaemon">Start daemon</button>
+          <button id="btnDemo">Demo metrics</button>
+        </div>
+        <div class="row">
+          <label class="toggle"><input type="checkbox" id="cpuTemp" checked /> CPU temp</label>
+          <label class="toggle"><input type="checkbox" id="cpuUsage" checked /> CPU usage</label>
+          <label class="toggle"><input type="checkbox" id="gpuTemp" checked /> GPU temp</label>
+          <label class="toggle"><input type="checkbox" id="gpuUsage" checked /> GPU usage</label>
+          <label class="toggle"><input type="checkbox" id="celsius" checked /> °C</label>
+        </div>
+        <div id="log"></div>
+      </section>
+
+      <section>
+        <h2>Device</h2>
+        <div class="kv" id="status">loading…</div>
+        <h2 style="margin-top:1.4rem">Sensors</h2>
+        <div class="kv" id="sensors">scanning…</div>
+      </section>
+    </div>
+  </main>
+  <script>
+    let daemonOn = false;
+    let useDemo = false;
+
+    const $ = (id) => document.getElementById(id);
+    const log = (msg) => { $("log").textContent = msg; };
+
+    function payloadFromUi() {
+      return {
+        demo: useDemo,
+        celsius: $("celsius").checked,
+        show_cpu_temp: $("cpuTemp").checked,
+        show_cpu_usage: $("cpuUsage").checked,
+        show_gpu_temp: $("gpuTemp").checked,
+        show_gpu_usage: $("gpuUsage").checked,
+      };
+    }
+
+    async function refreshStatus() {
+      const res = await fetch("/api/status");
+      const s = await res.json();
+      const connected = s.connected
+        ? `<span class="ok">connected${s.mock ? " (mock)" : ""}</span>`
+        : `<span class="bad">not found</span>`;
+      $("status").innerHTML = [
+        `<div>status <b>${connected}</b></div>`,
+        `<div>usb <b>${s.vendor_id}:${s.product_id}</b></div>`,
+        `<div>version <b>${s.version}</b></div>`,
+        `<div>last push <b>${s.last_push || "—"}</b></div>`,
+        `<div>frame <b>${s.last_describe || "—"}</b></div>`,
+        `<div>daemon <b>${s.daemon_running ? "running" : "stopped"}</b></div>`,
+        s.error ? `<div class="bad">${s.error}</div>` : "",
+      ].join("");
+      daemonOn = !!s.daemon_running;
+      $("btnDaemon").textContent = daemonOn ? "Stop daemon" : "Start daemon";
+      if (s.metrics) {
+        const unit = s.metrics.celsius ? "C" : "F";
+        $("temp").textContent = `${Number(s.metrics.cpu_temp_c).toFixed(0)}°${unit}`;
+        $("meta").textContent = `CPU ${Number(s.metrics.cpu_usage).toFixed(0)}% · RAM ${Number(s.metrics.ram_usage).toFixed(0)}%`;
+      }
+    }
+
+    async function refreshSensors() {
+      const res = await fetch("/api/sensors");
+      const data = await res.json();
+      const devices = (data.devices || []).map(d => `<div>hid <b>${d.id}</b> ${d.product || d.path}</div>`).join("")
+        || "<div>no matching HID device (UI can still run in mock)</div>";
+      const temps = (data.temps || []).slice(0, 8).map(t =>
+        `<div>${t.value.toFixed(1)} C <b>${t.label}</b></div>`
+      ).join("") || "<div>no hwmon temps</div>";
+      $("sensors").innerHTML = devices + temps;
+    }
+
+    $("btnPush").onclick = async () => {
+      useDemo = useDemo;
+      const res = await fetch("/api/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloadFromUi()),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) log(data.detail || "push failed");
+      else log(data.describe || "pushed");
+      await refreshStatus();
+    };
+
+    $("btnDemo").onclick = async () => {
+      useDemo = true;
+      log("next pushes use demo metrics");
+      $("btnPush").click();
+    };
+
+    $("btnDaemon").onclick = async () => {
+      const enable = !daemonOn;
+      const res = await fetch("/api/daemon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: enable,
+          interval_ms: 500,
+          demo: useDemo,
+          celsius: $("celsius").checked,
+        }),
+      });
+      const data = await res.json();
+      log(enable ? "daemon started" : "daemon stopped");
+      daemonOn = !!data.running;
+      await refreshStatus();
+    };
+
+    refreshStatus();
+    refreshSensors();
+    setInterval(refreshStatus, 2000);
+  </script>
+</body>
+</html>
