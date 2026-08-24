@@ -1,0 +1,10 @@
+celsius: true
+interval_ms: 500
+show_cpu_temp: true
+show_cpu_usage: true
+show_gpu_temp: true
+show_gpu_usage: true
+cpu_temp_sensor: null   # e.g. "k10temp/Tctl" or hwmon path fragment
+gpu_temp_sensor: null
+device_path: null
+mock: false
