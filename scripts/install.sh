@@ -7,6 +7,7 @@ if ! UV_BIN="$(command -v uv)"; then
   echo "uv is required to run the system service. Install it, then rerun this script." >&2
   exit 1
 fi
+SERVICE_USER="${SUDO_USER:-$(id -un)}"
 
 echo "Installing udev rule (sudo)…"
 sudo cp udev/99-e400plus.rules /etc/udev/rules.d/
@@ -30,7 +31,15 @@ fi
 echo "Installing and starting systemd service (sudo)…"
 SERVICE_RENDERED="$(mktemp)"
 trap 'rm -f "$SERVICE_RENDERED"' EXIT
-awk -v uv_bin="$UV_BIN" '
+awk -v uv_bin="$UV_BIN" -v service_user="$SERVICE_USER" -v working_directory="$ROOT" '
+  /^User=/ {
+    print "User=" service_user
+    next
+  }
+  /^WorkingDirectory=/ {
+    print "WorkingDirectory=" working_directory
+    next
+  }
   /^ExecStart=/ {
     print "ExecStart=" uv_bin " run --script scripts/e400plus-daemon.py"
     next

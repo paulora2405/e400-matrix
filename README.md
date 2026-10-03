@@ -63,9 +63,10 @@ python -m e400plus web --host 127.0.0.1 --port 43127
 
 The example service runs the PEP 723 `uv` script at
 `scripts/e400plus-daemon.py`; it creates and manages its own environment, so a
-project `.venv` is not required. It runs as `paulo` from
-`~/.local/share/air-cooler-e400-matrix` and reads
-`~/.config/e400plus/config.yaml`; update the username and `uv` path if needed.
+project `.venv` is not required. The installed service runs as the user who
+launches the installer and reads that user's `~/.config/e400plus/config.yaml`.
+The installer fills in the active username, absolute project path, and `uv`
+path.
 
 ```bash
 ./scripts/install.sh
