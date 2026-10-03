@@ -10,7 +10,7 @@ from datetime import datetime
 
 from . import PRODUCT_ID, VENDOR_ID, __version__
 from .config import Config, load_config, save_config
-from .device import E400Device, open_device
+from .device import E400Device, MockDevice, open_device
 from .protocol import Metrics, ShowMask, build_stats_payload, describe_payload
 from .sensors import collect_metrics, demo_metrics, list_hwmon_temps
 
@@ -94,30 +94,45 @@ def _cmd_daemon(args: argparse.Namespace) -> int:
         f"show=0x{int(cfg.show_mask):x} mock={cfg.mock}",
         flush=True,
     )
+    dev: E400Device | MockDevice | None = None
     try:
-        with open_device(mock=cfg.mock, path=args.path or cfg.device_path) as dev:
-            while True:
-                m = _metrics_from_args(args, cfg, tick)
+        while True:
+            if dev is None:
                 try:
-                    n = dev.push(m)
-                    if args.verbose:
-                        print(
-                            f"[{datetime.now():%H:%M:%S}] wrote {n}  "
-                            f"cpu={m.cpu_temp_c:.1f}C {m.cpu_usage:.0f}%",
-                            flush=True,
-                        )
+                    dev = open_device(mock=cfg.mock, path=args.path or cfg.device_path)
+                    print("connected to E400 display", flush=True)
                 except OSError as exc:
-                    print(f"write error: {exc}", file=sys.stderr, flush=True)
+                    print(f"connect error: {exc}; retrying", file=sys.stderr, flush=True)
                     time.sleep(1.0)
-                tick += 1
-                time.sleep(max(cfg.interval_ms, 100) / 1000.0)
+                    continue
+
+            m = _metrics_from_args(args, cfg, tick)
+            try:
+                n = dev.push(m)
+                if args.verbose:
+                    print(
+                        f"[{datetime.now():%H:%M:%S}] wrote {n}  "
+                        f"cpu={m.cpu_temp_c:.1f}C {m.cpu_usage:.0f}%",
+                        flush=True,
+                    )
+            except OSError as exc:
+                print(f"write error: {exc}; reconnecting", file=sys.stderr, flush=True)
+                dev.close()
+                dev = None
+                time.sleep(1.0)
+                continue
+            tick += 1
+            time.sleep(max(cfg.interval_ms, 100) / 1000.0)
     except KeyboardInterrupt:
         print("stopping…", flush=True)
         try:
-            with open_device(mock=cfg.mock, path=args.path or cfg.device_path) as dev:
+            if dev is not None:
                 dev.shutdown()
         except Exception:
             pass
+        finally:
+            if dev is not None:
+                dev.close()
         return 0
 
 
