@@ -3,12 +3,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-python3 -m venv .venv
-# shellcheck disable=SC1091
-source .venv/bin/activate
-pip install -U pip
-pip install -r requirements.txt
-pip install -e .
+if ! UV_BIN="$(command -v uv)"; then
+  echo "uv is required to run the system service. Install it, then rerun this script." >&2
+  exit 1
+fi
 
 echo "Installing udev rule (sudo)…"
 sudo cp udev/99-e400plus.rules /etc/udev/rules.d/
@@ -29,9 +27,21 @@ mock: false
 YAML
 fi
 
+echo "Installing and starting systemd service (sudo)…"
+SERVICE_RENDERED="$(mktemp)"
+trap 'rm -f "$SERVICE_RENDERED"' EXIT
+awk -v uv_bin="$UV_BIN" '
+  /^ExecStart=/ {
+    print "ExecStart=" uv_bin " run --script scripts/e400plus-daemon.py"
+    next
+  }
+  { print }
+' systemd/e400plus.service > "$SERVICE_RENDERED"
+sudo install -m 0644 "$SERVICE_RENDERED" /etc/systemd/system/e400plus.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now e400plus.service
+
 echo
 echo "Done. Try:"
-echo "  source .venv/bin/activate"
-echo "  python -m e400plus detect"
-echo "  python -m e400plus daemon -v"
-echo "  python -m e400plus web --port 43127"
+echo "  systemctl status e400plus.service"
+echo "  journalctl -u e400plus.service -f"

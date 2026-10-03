@@ -68,12 +68,13 @@ project `.venv` is not required. It runs as `paulo` from
 `~/.config/e400plus/config.yaml`; update the username and `uv` path if needed.
 
 ```bash
-sudo cp systemd/e400plus.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now e400plus.service
+./scripts/install.sh
 ```
 
-Edit the unit’s `WorkingDirectory` / venv path first.
+The installer adds the udev rule, creates a default config if needed, renders
+the service with the detected `uv` path, then enables and starts it. It prompts
+for `sudo`; install `uv` first. Check its state with
+`systemctl status e400plus.service`.
 
 ## Protocol
 
