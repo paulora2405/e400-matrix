@@ -1,5 +1,5 @@
 # darkFlash E400 / E400 Plus matrix display (HID)
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0513", ATTRS{idProduct}=="2007", MODE="0660", GROUP="plugdev", TAG+="uaccess", SYMLINK+="e400plus"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="5131", ATTRS{idProduct}=="2007", MODE="0660", GROUP="plugdev", TAG+="uaccess", SYMLINK+="e400plus"
 
 # fallback if the kernel exposes it only via usbhid
-SUBSYSTEM=="usb", ATTR{idVendor}=="0513", ATTR{idProduct}=="2007", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="5131", ATTR{idProduct}=="2007", MODE="0660", GROUP="plugdev", TAG+="uaccess"
