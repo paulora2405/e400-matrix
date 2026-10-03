@@ -15,6 +15,11 @@ dependencies = [
   "PyYAML>=6",
 ]
 
+[dependency-groups]
+dev = [
+  "pytest>=8",
+]
+
 [project.scripts]
 e400plus = "e400plus.cli:main"
 

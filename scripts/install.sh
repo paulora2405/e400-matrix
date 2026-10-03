@@ -20,6 +20,7 @@ if [[ ! -f "$HOME/.config/e400plus/config.yaml" ]]; then
   cat > "$HOME/.config/e400plus/config.yaml" <<'YAML'
 celsius: true
 interval_ms: 500
+metrics_cache_ms: 1000
 show_cpu_temp: true
 show_cpu_usage: true
 show_gpu_temp: true

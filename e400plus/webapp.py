@@ -87,6 +87,7 @@ class ControlState:
                 show=self.cfg.show_mask,
                 cpu_temp_sensor=self.cfg.cpu_temp_sensor,
                 gpu_temp_sensor=self.cfg.gpu_temp_sensor,
+                cache_seconds=self.cfg.metrics_cache_ms / 1000.0,
             )
         if overrides:
             m.celsius = overrides.celsius

@@ -5,7 +5,11 @@ from __future__ import annotations
 import glob
 import os
 import re
+import threading
+import time
 from dataclasses import dataclass
+from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -102,10 +106,11 @@ def _cpu_power_w() -> float:
     return 0.0
 
 
-def collect_metrics(
+METRICS_CACHE_SECONDS = 1.0
+
+
+def _collect_metrics(
     *,
-    celsius: bool = True,
-    show: ShowMask = ShowMask.DEFAULT,
     cpu_temp_sensor: Optional[str] = None,
     gpu_temp_sensor: Optional[str] = None,
 ) -> Metrics:
@@ -129,8 +134,78 @@ def collect_metrics(
         fan_rpm=0.0,
         water_rpm=0.0,
         ram_usage=float(vm.percent),
+    )
+
+
+class MetricsCache:
+    """Cache a hardware metrics snapshot for a fixed duration.
+
+    Frame settings such as temperature unit and display mask are intentionally
+    applied after the lookup: they describe a frame, not a hardware sample.
+    """
+
+    def __init__(self, ttl_seconds: float = METRICS_CACHE_SECONDS) -> None:
+        self.ttl_seconds = ttl_seconds
+        self._lock = threading.Lock()
+        self._cached_at: float | None = None
+        self._cached_key: tuple[Optional[str], Optional[str]] | None = None
+        self._cached_metrics: Metrics | None = None
+
+    def get(
+        self,
+        *,
+        celsius: bool,
+        show: ShowMask,
+        cpu_temp_sensor: Optional[str],
+        gpu_temp_sensor: Optional[str],
+        ttl_seconds: float | None = None,
+    ) -> Metrics:
+        key = (cpu_temp_sensor, gpu_temp_sensor)
+        now = time.monotonic()
+        ttl = self.ttl_seconds if ttl_seconds is None else max(ttl_seconds, 0.0)
+        with self._lock:
+            if (
+                self._cached_metrics is None
+                or self._cached_key != key
+                or self._cached_at is None
+                or now - self._cached_at >= ttl
+            ):
+                self._cached_metrics = _collect_metrics(
+                    cpu_temp_sensor=cpu_temp_sensor,
+                    gpu_temp_sensor=gpu_temp_sensor,
+                )
+                self._cached_key = key
+                # Start the next one-second window once sampling completes.
+                self._cached_at = time.monotonic()
+
+            # Callers can safely set per-frame fields without mutating the
+            # cached snapshot used by the next frame.
+            return replace(
+                self._cached_metrics,
+                celsius=celsius,
+                show=show,
+                when=datetime.now(),
+            )
+
+
+_metrics_cache = MetricsCache()
+
+
+def collect_metrics(
+    *,
+    celsius: bool = True,
+    show: ShowMask = ShowMask.DEFAULT,
+    cpu_temp_sensor: Optional[str] = None,
+    gpu_temp_sensor: Optional[str] = None,
+    cache_seconds: float = METRICS_CACHE_SECONDS,
+) -> Metrics:
+    """Return host metrics, refreshing the snapshot after ``cache_seconds``."""
+    return _metrics_cache.get(
         celsius=celsius,
         show=show,
+        cpu_temp_sensor=cpu_temp_sensor,
+        gpu_temp_sensor=gpu_temp_sensor,
+        ttl_seconds=cache_seconds,
     )
 
 

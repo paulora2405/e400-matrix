@@ -54,6 +54,7 @@ def _metrics_from_args(args: argparse.Namespace, cfg: Config, tick: int = 0) -> 
             show=cfg.show_mask,
             cpu_temp_sensor=cfg.cpu_temp_sensor,
             gpu_temp_sensor=cfg.gpu_temp_sensor,
+            cache_seconds=cfg.metrics_cache_ms / 1000.0,
         )
     m.celsius = cfg.celsius
     m.show = cfg.show_mask
@@ -89,6 +90,7 @@ def _cmd_daemon(args: argparse.Namespace) -> int:
     tick = 0
     print(
         f"e400plus daemon {__version__} — interval={cfg.interval_ms}ms "
+        f"metrics-cache={cfg.metrics_cache_ms}ms "
         f"show=0x{int(cfg.show_mask):x} mock={cfg.mock}",
         flush=True,
     )

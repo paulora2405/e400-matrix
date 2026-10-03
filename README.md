@@ -7,11 +7,15 @@ this reimplements the HID protocol and streams CPU/GPU stats from Linux.
 ## Features
 
 - Detect the cooler (`0513:2007` HID)
-- Push one frame or run a background daemon
+- Push one frame or run a background daemon; host metrics are cached independently of frame interval (one second by default)
 - Pick which metrics the panel rotates (CPU/GPU temp & usage)
 - °C / °F
 - Tiny local web UI
 - Mock mode for dry-runs without hardware
+
+`interval_ms` controls how often the display receives a frame. Set
+`metrics_cache_ms` in the YAML configuration to choose how long CPU/GPU metric
+samples are reused (default: `1000`).
 
 ARGB fan lighting is unchanged — that still goes through your motherboard’s
 5V ARGB header.
