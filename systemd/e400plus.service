@@ -4,9 +4,11 @@ After=multi-user.target
 
 [Service]
 Type=simple
-# Adjust User / paths for your install
-WorkingDirectory=/opt/e400plus
-ExecStart=/opt/e400plus/.venv/bin/python -m e400plus daemon --interval 500
+# Adjust the uv path if `command -v uv` reports a different location.
+User=paulo
+WorkingDirectory=~/.local/share/air-cooler-e400-matrix
+# interval_ms and metrics_cache_ms are read from ~/.config/e400plus/config.yaml.
+ExecStart=/usr/local/bin/uv run --script scripts/e400plus-daemon.py
 Restart=on-failure
 RestartSec=3
 
