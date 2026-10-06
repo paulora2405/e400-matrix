@@ -1,7 +1,29 @@
 from __future__ import annotations
 
 from e400plus.protocol import Metrics, ShowMask
-from e400plus.sensors import MetricsCache
+from e400plus.sensors import MetricsCache, _gpu_usage_percent
+
+
+def test_gpu_usage_reads_amdgpu_sysfs(monkeypatch):
+    monkeypatch.setattr(
+        "e400plus.sensors.glob.glob",
+        lambda pattern: ["/sys/class/drm/card1/device/gpu_busy_percent"]
+        if pattern == "/sys/class/drm/card*/device/gpu_busy_percent"
+        else [],
+    )
+    monkeypatch.setattr("e400plus.sensors._read_float", lambda _path: 42.5)
+
+    assert _gpu_usage_percent() == 42.5
+
+
+def test_gpu_usage_clamps_amdgpu_sysfs_value(monkeypatch):
+    monkeypatch.setattr(
+        "e400plus.sensors.glob.glob",
+        lambda _pattern: ["/sys/class/drm/card1/device/gpu_busy_percent"],
+    )
+    monkeypatch.setattr("e400plus.sensors._read_float", lambda _path: 150.0)
+
+    assert _gpu_usage_percent() == 100.0
 
 
 def test_metrics_cache_refreshes_once_per_second(monkeypatch):

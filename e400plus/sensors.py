@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import glob
+import json
 import os
 import re
+import subprocess
 import threading
 import time
 from dataclasses import dataclass
@@ -106,6 +108,40 @@ def _cpu_power_w() -> float:
     return 0.0
 
 
+def _gpu_usage_percent() -> float:
+    """Return AMD GPU utilization from amdgpu, falling back to ROCm SMI.
+
+    Recent amdgpu kernels expose this directly, so normal operation has no
+    external-tool dependency.  ROCm SMI is only consulted on systems whose
+    driver does not publish ``gpu_busy_percent`` (or does not allow access to
+    it).
+    """
+    for path in sorted(glob.glob("/sys/class/drm/card*/device/gpu_busy_percent")):
+        value = _read_float(path)
+        if value is not None:
+            return max(0.0, min(value, 100.0))
+
+    try:
+        result = subprocess.run(
+            ["rocm-smi", "--showuse", "--json"],
+            capture_output=True,
+            check=True,
+            text=True,
+            timeout=1,
+        )
+        devices = json.loads(result.stdout)
+        for device in devices.values():
+            for label, value in device.items():
+                if "gpu use" not in label.lower():
+                    continue
+                match = re.search(r"[0-9]+(?:\\.[0-9]+)?", str(value))
+                if match:
+                    return max(0.0, min(float(match.group()), 100.0))
+    except (FileNotFoundError, subprocess.SubprocessError, json.JSONDecodeError, TypeError):
+        pass
+    return 0.0
+
+
 METRICS_CACHE_SECONDS = 1.0
 
 
@@ -128,7 +164,7 @@ def _collect_metrics(
         cpu_freq_mhz=_cpu_freq_mhz(),
         cpu_voltage=0.0,
         gpu_temp_c=gpu_temp,
-        gpu_usage=0.0,
+        gpu_usage=_gpu_usage_percent(),
         gpu_power_w=0.0,
         gpu_freq_mhz=0.0,
         fan_rpm=0.0,
