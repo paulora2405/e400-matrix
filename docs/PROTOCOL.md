@@ -6,7 +6,7 @@ Recovered from the official Windows app `darkFlash E400.exe` (CyUSB HID + CPUID 
 
 | Property | Value |
 |---|---|
-| USB VID:PID | `0513:2007` |
+| USB VID:PID | `5131:2007` |
 | Class | HID |
 | Windows stack | Cypress `CyUSB.dll` → `CyHidDevice` |
 | Linux stack | `hidapi` / `hidraw` |
@@ -96,3 +96,43 @@ The panel rotates among the enabled bits.
   each digit pair fits in a single byte for the matrix glyph renderer.
 - ARGB lighting is **not** controlled over this USB path — it uses the
   motherboard 5V ARGB header.
+
+## Electron app 1.0.7 frame layout (same device, 0x5131:0x2007)
+
+The newer vendor app (`app.asar`, `main/_baseClass/device_hid.js`) writes a
+64-byte buffer every 200 ms. Index `i` below is the buffer index; the old
+`SendValueArray[n]` is index `n + 4`, and the old `payload[n]` is index `n + 1`.
+Index 0 is the report-ID slot.
+
+| Index | Value |
+|------:|-------|
+| 0..3 | `01 00 01 02` (same `00 01 02` header as before, preceded by the ID slot) |
+| 4..5 | CPU temp int, frac x100 |
+| 6 | 0 = C, 1 = F |
+| 7 | CPU usage |
+| 8..9 | CPU power (low two digits, frac) |
+| 10..11 | CPU freq (/100, %100) |
+| 12..13 | CPU voltage |
+| 14..21 | GPU temp, unit, usage, power, freq |
+| 22..23 | CPU fan RPM |
+| 24..25 | fan RPM |
+| 26..33 | date and time (`20`, `26`, month, day, h, m, s, weekday) |
+| 34 | RAM usage |
+| 35..36 | CPU / GPU power hundreds |
+| 37 | displayMode (0 temp, 1 usage, 2 cycle on some vendors) |
+| 38 | cycleInterval (default 5) |
+| 39 | CPU/GPU flag (0 = CPU, 1 = GPU) |
+| 40 | show bitmask (1 CPU temp, 2 CPU usage, 4 GPU temp, 8 GPU usage); default 1 |
+| 41..42 | displayMode again (vendor-specific variants) |
+| 43..47 | RAM temp, RAM temp unit, RAM freq |
+| 48 | selector (0 CPU, 1 GPU, 2 RAM, 3 cycle) |
+| 49..51 | CPU / GPU / RAM usage decimals |
+
+Index 40 is the old `SendValueArray[36]` ShowData bitmask. Indices 37..39 and
+41..51 are new relative to the port; the port leaves them zero. They are
+vendor-variant fields and are untested on the E400 (**unknown** whether the E400
+firmware reads them). Other PIDs in the same app use different layouts, which
+are not relevant to this device.
+
+No command other than "live frame" (`payload[1] = 0x01`) and the old app's exit
+frame (`payload[1] = 0x0F`) exists in either vendor app.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import signal
 import sys
 import time
 from datetime import datetime
@@ -95,6 +96,13 @@ def _cmd_daemon(args: argparse.Namespace) -> int:
         flush=True,
     )
     dev: E400Device | MockDevice | None = None
+
+    def _terminate(_signum: int, _frame: object) -> None:
+        # systemd stops the unit (and poweroff stops it) with SIGTERM; route it
+        # through the same path as Ctrl-C so the shutdown frame is still sent.
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, _terminate)
     try:
         while True:
             if dev is None:
@@ -134,6 +142,27 @@ def _cmd_daemon(args: argparse.Namespace) -> int:
             if dev is not None:
                 dev.close()
         return 0
+
+
+def _cmd_probe(args: argparse.Namespace) -> int:
+    from . import probe
+
+    cfg = load_config(args.config)
+    if args.mock:
+        cfg.mock = True
+    dev = open_device(mock=cfg.mock, path=args.path or cfg.device_path)
+    try:
+        if args.experiment == "shutdown":
+            probe.run_shutdown(dev, quiet_s=args.quiet)
+        elif args.experiment == "cmd":
+            probe.run_command(dev, int(args.value, 0), quiet_s=args.quiet)
+        elif args.experiment == "interval":
+            probe.run_interval(dev, [float(p) / 1000.0 for p in args.value.split(",")])
+        else:
+            probe.run_silence(dev, [float(g) for g in args.value.split(",")])
+    finally:
+        dev.close()
+    return 0
 
 
 def _cmd_encode(args: argparse.Namespace) -> int:
@@ -198,6 +227,24 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--mock", action="store_true")
     s.add_argument("-v", "--verbose", action="store_true")
     s.set_defaults(func=_cmd_daemon)
+
+    s = sub.add_parser(
+        "probe",
+        help="hardware experiments (stop the daemon first)",
+        description="shutdown: stream, send the 0x0F exit frame, go silent. "
+        "silence VALUE=comma list of gap seconds: find the host-silence watchdog. "
+        "cmd VALUE=byte: send one frame with that command byte (payload[1]), then go silent.",
+    )
+    s.add_argument("experiment", choices=["shutdown", "silence", "interval", "cmd"])
+    s.add_argument(
+        "value",
+        nargs="?",
+        default="0.25,0.5,1,2,5",
+        help="gap seconds for silence, send periods in ms for interval (e.g. 100,200,300,400), byte for cmd",
+    )
+    s.add_argument("--quiet", type=float, default=10.0, help="seconds of silence to observe")
+    s.add_argument("--mock", action="store_true", help="do not open real HID device")
+    s.set_defaults(func=_cmd_probe)
 
     s = sub.add_parser("encode", help="build a payload without opening the device")
     s.add_argument("--demo", action="store_true")

@@ -57,3 +57,23 @@ def test_daemon_reopens_device_after_write_failure(monkeypatch):
     assert first.closed is True
     assert second.shutdown_called is True
     assert second.closed is True
+
+
+def test_daemon_sends_shutdown_frame_on_sigterm(monkeypatch):
+    import os
+    import signal
+
+    dev = _Device()
+    monkeypatch.setattr(cli, "load_config", lambda _path: Config(interval_ms=100))
+    monkeypatch.setattr(cli, "open_device", lambda **_kwargs: dev)
+    monkeypatch.setattr(cli, "_metrics_from_args", lambda *_args: Metrics())
+    monkeypatch.setattr(cli.time, "sleep", lambda _s: os.kill(os.getpid(), signal.SIGTERM))
+    previous = signal.getsignal(signal.SIGTERM)
+    try:
+        args = Namespace(config=None, mock=False, interval=None, demo=False, path=None, verbose=False)
+        assert cli._cmd_daemon(args) == 0
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+    assert dev.shutdown_called is True
+    assert dev.closed is True

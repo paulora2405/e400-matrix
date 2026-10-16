@@ -19,7 +19,7 @@ DEFAULT_PATHS = (
 @dataclass
 class Config:
     celsius: bool = True
-    interval_ms: int = 500
+    interval_ms: int = 200
     metrics_cache_ms: int = 1000
     show_cpu_temp: bool = True
     show_cpu_usage: bool = True

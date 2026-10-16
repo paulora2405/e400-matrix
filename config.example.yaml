@@ -1,5 +1,5 @@
 celsius: true
-interval_ms: 500
+interval_ms: 200
 metrics_cache_ms: 1000  # refresh CPU/GPU metrics independently of frame pushes
 show_cpu_temp: true
 show_cpu_usage: true

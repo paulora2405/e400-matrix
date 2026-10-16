@@ -47,7 +47,7 @@ class PushRequest(BaseModel):
 
 class DaemonRequest(BaseModel):
     enabled: bool
-    interval_ms: int = Field(500, ge=100, le=5000)
+    interval_ms: int = Field(200, ge=100, le=5000)
     demo: bool = False
     celsius: bool = True
 

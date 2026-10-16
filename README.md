@@ -6,7 +6,7 @@ this reimplements the HID protocol and streams CPU/GPU stats from Linux.
 
 ## Features
 
-- Detect the cooler (`0513:2007` HID)
+- Detect the cooler (`5131:2007` HID)
 - Push one frame or run a background daemon; host metrics are cached independently of frame interval (one second by default)
 - Pick which metrics the panel rotates (CPU/GPU temp & usage)
 - °C / °F
@@ -55,7 +55,7 @@ python -m e400plus web --host 127.0.0.1 --port 43127
 | `sensors` | List hwmon temps + current readings |
 | `encode` | Build a 64-byte payload (no device I/O) |
 | `push` | Send one stats frame |
-| `daemon` | Stream frames (~500 ms default) |
+| `daemon` | Stream frames (200 ms default; the panel resets if frames stop for much longer) |
 | `config` | Show / write `~/.config/e400plus/config.yaml` |
 | `web` | Open the control UI |
 
@@ -82,7 +82,7 @@ for `sudo`; install `uv` first. Check its state with
 See [docs/PROTOCOL.md](docs/PROTOCOL.md) and
 [docs/REVERSE-ENGINEERING.md](docs/REVERSE-ENGINEERING.md).
 
-Summary: HID VID:PID `0513:2007`, 64-byte payload headed by `00 01 02`, then
+Summary: HID VID:PID `5131:2007`, 64-byte payload headed by `00 01 02`, then
 packed metric bytes matching the Windows `SendValueArray` layout.
 
 ## Status
